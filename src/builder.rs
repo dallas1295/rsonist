@@ -42,20 +42,11 @@ impl JSONBuilder {
 
     pub fn add_object<F>(&mut self, key: &str, f: F)
     where
-        F: FnOnce(&mut Value),
+        F: FnOnce(&mut JSONBuilder),
     {
-        let mut v = Value::Object(BTreeMap::new());
-        f(&mut v);
-        self.entries.insert(key.to_string(), v);
-    }
-
-    pub fn add_array<F>(&mut self, key: &str, f: F)
-    where
-        F: FnOnce(&mut Vec<Value>),
-    {
-        let mut arr = Vec::new();
-        f(&mut arr);
-        self.entries.insert(key.to_string(), Value::Array(arr));
+        let mut child = JSONBuilder::new();
+        f(&mut child);
+        self.entries.insert(key.to_string(), child.build());
     }
 
     /// Consumes the builder and returns the assembled object as a [`Value`].
