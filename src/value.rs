@@ -1,0 +1,306 @@
+use std::collections::BTreeMap;
+
+/// A JSON number, distinguishing unsigned integers, signed integers, and floats.
+///
+/// You usually don't construct this directly — it's produced by [`objectify`]
+/// (which picks the variant based on the JSON text) or by the `From` impls on
+/// `u64`, `i64`, and `f64`. To pull a concrete number out of a [`Value`], use
+/// [`Value::as_i64`], [`Value::as_u64`], or [`Value::as_f64`] instead of
+/// matching on this enum directly.
+///
+/// [`objectify`]: crate::objectify
+pub enum JsonNumber {
+    /// A non-negative integer parsed from JSON (e.g. `42`).
+    UInt(u64),
+    /// A negative integer parsed from JSON (e.g. `-7`).
+    Int(i64),
+    /// A floating-point number parsed from JSON (e.g. `3.14`, `1e10`).
+    Float(f64),
+}
+impl From<u64> for JsonNumber {
+    fn from(n: u64) -> Self {
+        JsonNumber::UInt(n)
+    }
+}
+
+impl From<i64> for JsonNumber {
+    fn from(n: i64) -> Self {
+        JsonNumber::Int(n)
+    }
+}
+
+impl From<f64> for JsonNumber {
+    fn from(n: f64) -> Self {
+        JsonNumber::Float(n)
+    }
+}
+
+impl From<String> for Value {
+    fn from(s: String) -> Self {
+        Value::Str(s)
+    }
+}
+
+/// Any JSON value.
+///
+/// This is the central type of rsonist: every JSON document parses into a
+/// `Value`, and every document is serialized from one. The variants map
+/// one-to-one onto the JSON data types.
+///
+/// Navigate into nested values with [`get`](Value::get) and
+/// [`get_from`](Value::get_from), then extract a primitive with an `as_*`
+/// method. Construct one with [`JSONBuilder`], the `From` impls, or by hand.
+///
+/// [`JSONBuilder`]: crate::JSONBuilder
+pub enum Value {
+    /// JSON `null`.
+    Null,
+    /// JSON `true` or `false`.
+    Bool(bool),
+    /// A JSON number. See [`JsonNumber`].
+    Number(JsonNumber),
+    /// A JSON string.
+    Str(String),
+    /// A JSON array. Elements are themselves [`Value`]s.
+    Array(Vec<Value>),
+    /// A JSON object. Keys are strings, values are [`Value`]s.
+    ///
+    /// Backed by a [`BTreeMap`], so keys serialize in sorted order (deterministic
+    /// output) rather than insertion order.
+    Object(BTreeMap<String, Value>),
+}
+
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        Value::Bool(b)
+    }
+}
+
+impl From<i8> for Value {
+    fn from(n: i8) -> Self {
+        Value::Number(JsonNumber::Int(n.into()))
+    }
+}
+
+impl From<u8> for Value {
+    fn from(n: u8) -> Self {
+        Value::Number(JsonNumber::UInt(n.into()))
+    }
+}
+
+impl From<i16> for Value {
+    fn from(n: i16) -> Self {
+        Value::Number(JsonNumber::Int(n.into()))
+    }
+}
+
+impl From<u16> for Value {
+    fn from(n: u16) -> Self {
+        Value::Number(JsonNumber::UInt(n.into()))
+    }
+}
+
+impl From<u32> for Value {
+    fn from(n: u32) -> Self {
+        Value::Number(JsonNumber::UInt(n.into()))
+    }
+}
+
+impl From<i32> for Value {
+    fn from(n: i32) -> Self {
+        Value::Number(JsonNumber::Int(n.into()))
+    }
+}
+
+impl From<f32> for Value {
+    fn from(n: f32) -> Self {
+        Value::Number(JsonNumber::Float(n.into()))
+    }
+}
+
+impl From<u64> for Value {
+    fn from(n: u64) -> Self {
+        Value::Number(JsonNumber::UInt(n))
+    }
+}
+
+impl From<i64> for Value {
+    fn from(n: i64) -> Self {
+        Value::Number(JsonNumber::Int(n))
+    }
+}
+
+impl From<f64> for Value {
+    fn from(n: f64) -> Self {
+        Value::Number(JsonNumber::Float(n))
+    }
+}
+
+impl<T: Into<Value>> From<Vec<T>> for Value {
+    fn from(v: Vec<T>) -> Self {
+        Value::Array(v.into_iter().map(Into::into).collect())
+    }
+}
+
+impl<T: Into<Value>> From<BTreeMap<String, T>> for Value {
+    fn from(map: BTreeMap<String, T>) -> Self {
+        Value::Object(map.into_iter().map(|(k, v)| (k, v.into())).collect())
+    }
+}
+
+impl Value {
+    /// Serializes this value back to JSON text.
+    ///
+    /// The inverse of [`objectify`](crate::objectify): parses → `Value`
+    /// → `to_json` round-trips for finite numbers and supported escapes.
+    /// Non-finite floats (infinity, NaN) are emitted as `null`, matching the
+    /// JSON spec's lack of non-finite number representations.
+    pub fn to_json(&self) -> String {
+        match self {
+            Value::Null => "null".to_string(),
+            Value::Bool(b) => b.to_string(),
+            Value::Str(s) => {
+                let mut out = String::from("\"");
+                for c in s.chars() {
+                    match c {
+                        '"' => out.push_str("\\\""),
+                        '\\' => out.push_str("\\\\"),
+                        '\n' => out.push_str("\\n"),
+                        '\t' => out.push_str("\\t"),
+                        '\u{8}' => out.push_str("\\b"),
+                        '\u{c}' => out.push_str("\\f"),
+                        c if c <= '\u{1f}' => out.push_str(&format!("\\u{:04x}", c as u32)),
+                        c => out.push(c),
+                    }
+                }
+                out.push('"');
+                out
+            }
+            Value::Number(n) => match n {
+                JsonNumber::UInt(u) => u.to_string(),
+                JsonNumber::Int(i) => i.to_string(),
+                JsonNumber::Float(f) => {
+                    if f.is_finite() {
+                        f.to_string()
+                    } else {
+                        "null".to_string()
+                    }
+                }
+            },
+            Value::Array(i) => {
+                // this turns the Array into an iter and then recursively goes back to "jsonify" remaining children
+                let arr: Vec<String> = i.iter().map(|i| i.to_json()).collect();
+                format!("[{}]", arr.join(" , "))
+            }
+            Value::Object(m) => {
+                // this turns the HashMap into an iter and then recursively goes back to "jsonify" remaining children
+                let obj: Vec<String> = m
+                    .iter()
+                    .map(|(k, v)| format!("\"{}\": {}", k, v.to_json()))
+                    .collect();
+                format!("{{{}}}", obj.join(", "))
+            }
+        }
+    }
+
+    /// Looks up a value by key, if this is an object.
+    ///
+    /// Returns `None` if this value isn't an object, or if the key is absent.
+    /// Chainable with `?` to drill into nested structures:
+    ///
+    /// ```
+    /// use rsonist::objectify;
+    /// let root = objectify(r#"{"a": {"b": 1}}"#).unwrap();
+    /// let b = root.get("a").unwrap().get("b").unwrap().as_i64().unwrap();
+    /// assert_eq!(b, 1);
+    /// ```
+    pub fn get(&self, key: &str) -> Option<&Value> {
+        match self {
+            Value::Object(m) => m.get(key),
+            _ => None,
+        }
+    }
+
+    /// Looks up a value by index, if this is an array.
+    ///
+    /// Returns `None` if this value isn't an array, or if the index is out of
+    /// bounds. Combine with [`get`](Value::get) to reach into arrays nested
+    /// inside objects:
+    ///
+    /// ```
+    /// use rsonist::objectify;
+    /// let root = objectify(r#"{"items": ["x", "y", "z"]}"#).unwrap();
+    /// let second = root.get("items").unwrap().get_from(1).unwrap().as_str().unwrap();
+    /// assert_eq!(second, "y");
+    /// ```
+    pub fn get_from(&self, index: usize) -> Option<&Value> {
+        match self {
+            Value::Array(arr) => arr.get(index),
+            _ => None,
+        }
+    }
+
+    /// Returns the string if this is a [`Value::Str`], else `None`.
+    ///
+    /// Borrows from the value — no allocation. Call `.to_string()` on the
+    /// result if you need an owned `String`.
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            Value::Str(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// Returns the boolean if this is a [`Value::Bool`], else `None`.
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Value::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    /// Returns the value as `i64`, if it's an integer that fits.
+    ///
+    /// Works on both [`JsonNumber::Int`] and [`JsonNumber::UInt`] (widening
+    /// the unsigned value when it fits in `i64`). Returns `None` for floats
+    /// or unsigned values exceeding `i64::MAX`.
+    pub fn as_i64(&self) -> Option<i64> {
+        match self {
+            Value::Number(JsonNumber::Int(n)) => Some(*n),
+            Value::Number(JsonNumber::UInt(n)) => i64::try_from(*n).ok(),
+            _ => None,
+        }
+    }
+
+    /// Returns the value as `u64`, if it's a non-negative integer.
+    ///
+    /// Works on [`JsonNumber::UInt`] directly, and on [`JsonNumber::Int`]
+    /// when the value is `>= 0`. Returns `None` for negatives or floats.
+    pub fn as_u64(&self) -> Option<u64> {
+        match self {
+            Value::Number(JsonNumber::UInt(n)) => Some(*n),
+            Value::Number(JsonNumber::Int(n)) => {
+                if *n >= 0 {
+                    Some(*n as u64)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// Returns the value as `f64`, for any number variant.
+    ///
+    /// This is the universal numeric escape hatch — integers widen to `f64`
+    /// losslessly for all values up to 2^53, and floats pass through directly.
+    /// Returns `None` only for non-numeric values.
+    pub fn as_f64(&self) -> Option<f64> {
+        match self {
+            Value::Number(JsonNumber::Float(f)) => Some(*f),
+            Value::Number(JsonNumber::Int(n)) => Some(*n as f64),
+            Value::Number(JsonNumber::UInt(n)) => Some(*n as f64),
+            _ => None,
+        }
+    }
+}
