@@ -36,8 +36,8 @@ impl JSONBuilder {
     /// Inserts a key/value pair. Any type that implements [`Into<Value>`]
     /// (the integer/float/bool/String/Vec/HashMap types) can be passed
     /// directly as the value.
-    pub fn add_pair(&mut self, key: String, value: impl Into<Value>) {
-        self.entries.insert(key, value.into());
+    pub fn add_pair(&mut self, key: &str, value: impl Into<Value>) {
+        self.entries.insert(key.to_string(), value.into());
     }
 
     /// Consumes the builder and returns the assembled object as a [`Value`].
