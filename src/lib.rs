@@ -6,15 +6,15 @@
 //!
 //! # Parsing
 //!
-//! [`objectify`] turns JSON text into a [`Value`]. Drill in with
+//! [`to_value`] turns JSON text into a [`Value`]. Drill in with
 //! [`Value::get`] / [`Value::get_from`], then pull out a primitive with an
 //! `as_*` method:
 //!
 //! ```
-//! use rsonist::objectify;
+//! use rsonist::to_value;
 //!
 //! let json = r#"{"name": "alice", "scores": [10, 20, 30]}"#;
-//! let root = objectify(json)?;
+//! let root = to_value(json)?;
 //!
 //! let name = root.get("name").unwrap().as_str().unwrap();
 //! let first_score = root.get("scores").unwrap().get_from(0).unwrap().as_i64().unwrap();
@@ -27,14 +27,14 @@
 //! # Building
 //!
 //! Construct a [`Value`] by hand, with [`JSONBuilder`], or via the `From`
-//! impls on common Rust types, then serialize it with [`Value::to_json`].
+//! impls on common Rust types, then serialize it with [`Value::to_str`].
 //!
 //! ```
 //! use rsonist::JSONBuilder;
 //!
 //! let mut builder = JSONBuilder::new();
-//! builder.add_pair("name".to_string(), "alice".to_string());
-//! let json = builder.build().to_json();
+//! builder.add_pair("name", "alice".to_string());
+//! let json = builder.build().to_str();
 //! assert_eq!(json, r#"{"name": "alice"}"#);
 //! ```
 
@@ -43,5 +43,5 @@ mod parse;
 mod value;
 
 pub use builder::JSONBuilder;
-pub use parse::{ScanError, objectify};
+pub use parse::{ScanError, to_value};
 pub use value::{JsonNumber, Value};

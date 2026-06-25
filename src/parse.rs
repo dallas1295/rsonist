@@ -1,6 +1,6 @@
-use std::collections::BTreeMap;
-
 use crate::{JsonNumber, Value};
+use std::collections::BTreeMap;
+use std::fmt;
 
 /// An error produced while parsing JSON.
 ///
@@ -24,6 +24,22 @@ pub enum ScanError {
     /// Non-whitespace content after the top-level value (e.g. `123abc`).
     TrailingData { p: usize },
 }
+
+impl fmt::Display for ScanError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ScanError::UnexpectedChar { c, p } => write!(f, "unexpected '{c}' at byte {p}"),
+            ScanError::UnexpectedEof => write!(f, "unexpected end of input"),
+            ScanError::InvalidUtf8 { p } => write!(f, "invalid UTF-8 at byte {p}"),
+            ScanError::InvalidEscape { p } => write!(f, "invalid escape at byte {p}"),
+            ScanError::InvalidNumber { p } => write!(f, "invalid number at byte {p}"),
+            ScanError::TrailingData { p } => write!(f, "trailing data at byte {p}"),
+        }
+    }
+}
+
+impl std::error::Error for ScanError {}
+
 struct Scanner<'a> {
     i: &'a str,
     p: usize,
@@ -297,13 +313,13 @@ impl<'a> Scanner<'a> {
 /// # Example
 ///
 /// ```
-/// use rsonist::objectify;
+/// use rsonist::to_value;
 ///
-/// let value = objectify(r#"{"name": "alice", "age": 30}"#)?;
+/// let value = to_value(r#"{"name": "alice", "age": 30}"#)?;
 /// assert_eq!(value.get("name").unwrap().as_str().unwrap(), "alice");
 /// # Ok::<(), rsonist::ScanError>(())
 /// ```
-pub fn objectify(json: &str) -> Result<Value, ScanError> {
+pub fn to_value(json: &str) -> Result<Value, ScanError> {
     let mut scanner = Scanner::new(json);
     let object = scanner.parse_value()?;
     scanner.skip_whitespace();

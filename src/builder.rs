@@ -14,8 +14,8 @@ use crate::value::Value;
 /// use rsonist::JSONBuilder;
 ///
 /// let mut builder = JSONBuilder::new();
-/// builder.add_pair("name".to_string(), "alice".to_string());
-/// builder.add_pair("age".to_string(), 30);
+/// builder.add_pair("name", "alice".to_string());
+/// builder.add_pair("age", 30);
 ///
 /// let value = builder.build();
 /// assert_eq!(value.get("name").unwrap().as_str().unwrap(), "alice");
@@ -34,12 +34,29 @@ impl JSONBuilder {
     }
 
     /// Inserts a key/value pair. Any type that implements [`Into<Value>`]
-    /// (the integer/float/bool/String/Vec/HashMap types) can be passed
+    /// (the integer/float/bool/String/Vec/BTreeMap types) can be passed
     /// directly as the value.
     pub fn add_pair(&mut self, key: &str, value: impl Into<Value>) {
         self.entries.insert(key.to_string(), value.into());
     }
 
+    /// Inserts a nested object under the given key.
+    ///
+    /// The closure receives a fresh [`JSONBuilder`] for the child object.
+    /// This is useful for building nested structures top-to-bottom:
+    ///
+    /// ```
+    /// use rsonist::{JSONBuilder, Value};
+    ///
+    /// let mut builder = JSONBuilder::new();
+    /// builder.add_pair("name", "alice".to_string());
+    /// builder.add_object("meta", |c| {
+    ///     c.add_pair("age", 30);
+    ///     c.add_pair("active", true);
+    /// });
+    /// let value = builder.build();
+    /// assert_eq!(value.get("meta").unwrap().get("age").unwrap().as_i64().unwrap(), 30);
+    /// ```
     pub fn add_object<F>(&mut self, key: &str, f: F)
     where
         F: FnOnce(&mut JSONBuilder),

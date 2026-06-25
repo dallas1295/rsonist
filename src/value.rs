@@ -2,13 +2,13 @@ use std::collections::BTreeMap;
 
 /// A JSON number, distinguishing unsigned integers, signed integers, and floats.
 ///
-/// You usually don't construct this directly — it's produced by [`objectify`]
+/// You usually don't construct this directly — it's produced by [`to_value`]
 /// (which picks the variant based on the JSON text) or by the `From` impls on
 /// `u64`, `i64`, and `f64`. To pull a concrete number out of a [`Value`], use
 /// [`Value::as_i64`], [`Value::as_u64`], or [`Value::as_f64`] instead of
 /// matching on this enum directly.
 ///
-/// [`objectify`]: crate::objectify
+/// [`to_value`]: crate::to_value
 pub enum JsonNumber {
     /// A non-negative integer parsed from JSON (e.g. `42`).
     UInt(u64),
@@ -151,11 +151,11 @@ impl<T: Into<Value>> From<BTreeMap<String, T>> for Value {
 impl Value {
     /// Serializes this value back to JSON text.
     ///
-    /// The inverse of [`objectify`](crate::objectify): parses → `Value`
-    /// → `to_json` round-trips for finite numbers and supported escapes.
+    /// The inverse of [`to_value`](crate::to_value): parses → `Value`
+    /// → `to_str` round-trips for finite numbers and supported escapes.
     /// Non-finite floats (infinity, NaN) are emitted as `null`, matching the
     /// JSON spec's lack of non-finite number representations.
-    pub fn to_json(&self) -> String {
+    pub fn to_str(&self) -> String {
         match self {
             Value::Null => "null".to_string(),
             Value::Bool(b) => b.to_string(),
@@ -188,15 +188,15 @@ impl Value {
                 }
             },
             Value::Array(i) => {
-                // this turns the Array into an iter and then recursively goes back to "jsonify" remaining children
-                let arr: Vec<String> = i.iter().map(|i| i.to_json()).collect();
+                // this turns the Array into an iter and then recursively serializes remaining children
+                let arr: Vec<String> = i.iter().map(|i| i.to_str()).collect();
                 format!("[{}]", arr.join(" , "))
             }
             Value::Object(m) => {
-                // this turns the HashMap into an iter and then recursively goes back to "jsonify" remaining children
+                // this turns the BTreeMap into an iter and then recursively serializes remaining children
                 let obj: Vec<String> = m
                     .iter()
-                    .map(|(k, v)| format!("\"{}\": {}", k, v.to_json()))
+                    .map(|(k, v)| format!("\"{}\": {}", k, v.to_str()))
                     .collect();
                 format!("{{{}}}", obj.join(", "))
             }
@@ -209,8 +209,8 @@ impl Value {
     /// Chainable with `?` to drill into nested structures:
     ///
     /// ```
-    /// use rsonist::objectify;
-    /// let root = objectify(r#"{"a": {"b": 1}}"#).unwrap();
+    /// use rsonist::to_value;
+    /// let root = to_value(r#"{"a": {"b": 1}}"#).unwrap();
     /// let b = root.get("a").unwrap().get("b").unwrap().as_i64().unwrap();
     /// assert_eq!(b, 1);
     /// ```
@@ -228,8 +228,8 @@ impl Value {
     /// inside objects:
     ///
     /// ```
-    /// use rsonist::objectify;
-    /// let root = objectify(r#"{"items": ["x", "y", "z"]}"#).unwrap();
+    /// use rsonist::to_value;
+    /// let root = to_value(r#"{"items": ["x", "y", "z"]}"#).unwrap();
     /// let second = root.get("items").unwrap().get_from(1).unwrap().as_str().unwrap();
     /// assert_eq!(second, "y");
     /// ```
@@ -300,6 +300,38 @@ impl Value {
             Value::Number(JsonNumber::Float(f)) => Some(*f),
             Value::Number(JsonNumber::Int(n)) => Some(*n as f64),
             Value::Number(JsonNumber::UInt(n)) => Some(*n as f64),
+            _ => None,
+        }
+    }
+
+    /// Returns the object map if this is a [`Value::Object`], else `None`.
+    ///
+    /// Borrows the inner [`BTreeMap`] — iterate entries directly without
+    /// allocating. Chain with [`get`](Value::get) to drill in:
+    ///
+    /// ```
+    /// use rsonist::to_value;
+    /// let root = to_value(r#"{"a": 1, "b": 2}"#).unwrap();
+    /// if let Some(obj) = root.as_obj() {
+    ///     for (key, val) in obj {
+    ///         println!("{key}: {}", val.to_str());
+    ///     }
+    /// }
+    /// ```
+    pub fn as_obj(&self) -> Option<&BTreeMap<String, Value>> {
+        match self {
+            Value::Object(m) => Some(m),
+            _ => None,
+        }
+    }
+
+    /// Returns the array slice if this is a [`Value::Array`], else `None`.
+    ///
+    /// Borrows the inner elements as a slice — iterate directly without
+    /// allocating.
+    pub fn as_array(&self) -> Option<&[Value]> {
+        match self {
+            Value::Array(a) => Some(a),
             _ => None,
         }
     }
