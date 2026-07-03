@@ -41,6 +41,18 @@ impl From<String> for Value {
     }
 }
 
+impl From<&String> for Value {
+    fn from(s: &String) -> Self {
+        Value::Str(s.to_string())
+    }
+}
+
+impl From<&str> for Value {
+    fn from(s: &str) -> Self {
+        Value::Str(s.to_string())
+    }
+}
+
 /// Any JSON value.
 ///
 /// This is the central type of rsonist: every JSON document parses into a
