@@ -335,4 +335,95 @@ impl Value {
             _ => None,
         }
     }
+
+    /// Serializes this value to pretty-printed (indented, multi-line) JSON text.
+    ///
+    /// Unlike [`to_str`](Value::to_str), which emits compact single-line JSON,
+    /// `prettify` inserts a newline after every `{`, `[`, and `,`, and indents
+    /// each nested level by two spaces. Intended for output read by humans.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rsonist::JSONBuilder;
+    ///
+    /// let mut builder = JSONBuilder::new();
+    /// builder.add_pair("name", "alice".to_string());
+    /// builder.add_pair("scores", vec![10, 20, 30]);
+    /// let pretty = builder.build().prettify();
+    /// ```
+    ///
+    /// Non-finite floats (infinity, NaN) are emitted as `null`, matching
+    /// [`to_str`](Value::to_str).
+    pub fn prettify(&self) -> String {
+        let mut out = String::new();
+        self.write_pretty(&mut out, 0);
+        out
+    }
+
+    /// Recursive worker for [`prettify`](Value::prettify).
+    ///
+    /// Writes this value into `out` at the given indent `level` (0 = top level).
+    /// Under the calling convention, the *caller* emits the leading indent for
+    /// this value's first line; this method emits only the value's content. For
+    /// containers, that means the opening bracket, then each child on its own
+    /// line (indented at `level + 1`), then the closing bracket indented at
+    /// `level`. Leaves (`Null`/`Bool`/`Number`/`Str`) emit just their literal
+    /// text.
+    fn write_pretty(&self, out: &mut String, level: usize) {
+        let indent = "  ".repeat(level);
+
+        match self {
+            Value::Array(items) => {
+                out.push('[');
+                out.push('\n');
+                for (i, item) in items.iter().enumerate() {
+                    out.push_str(&"  ".repeat(level + 1));
+                    item.write_pretty(out, level + 1);
+                    if i + 1 < items.len() {
+                        out.push(',');
+                    }
+                    out.push('\n');
+                }
+                out.push_str(&indent);
+                out.push(']');
+            }
+            Value::Object(items) => {
+                out.push('{');
+                out.push('\n');
+                for (i, (key, val)) in items.iter().enumerate() {
+                    out.push_str(&"  ".repeat(level + 1));
+                    out.push('"');
+                    out.push_str(key);
+                    out.push_str("\": ");
+                    val.write_pretty(out, level + 1);
+
+                    if i + 1 < items.len() {
+                        out.push(',');
+                    }
+                    out.push('\n');
+                }
+                out.push_str(&"  ".repeat(level));
+                out.push('}');
+            }
+            Value::Bool(b) => out.push_str(&b.to_string()),
+            Value::Null => out.push_str("null"),
+            Value::Str(s) => {
+                out.push('"');
+                out.push_str(s);
+                out.push('"');
+            }
+            Value::Number(n) => match n {
+                JsonNumber::UInt(u) => out.push_str(&u.to_string()),
+                JsonNumber::Int(i) => out.push_str(&i.to_string()),
+                JsonNumber::Float(f) => {
+                    if f.is_finite() {
+                        out.push_str(&f.to_string())
+                    } else {
+                        out.push_str("null")
+                    }
+                }
+            },
+        }
+    }
 }
