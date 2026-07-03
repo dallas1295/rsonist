@@ -1,5 +1,38 @@
 use std::collections::BTreeMap;
 
+/// Build a `Value` using JSON-like literal syntax.
+///
+/// ```
+/// use rsonist::rson;
+///
+/// let v = rson!({
+///     "name": "alice",
+///     "age": 30,
+///     "active": true,
+///     "scores": rson!([10, 20, 30]),
+///     "meta": rson!({ "role": "admin" }),
+/// });
+/// ```
+#[macro_export]
+macro_rules! rson {
+    // Object: { "k": v, "k2": v2 }
+    ( { $($key:tt : $val:expr),* $(,)? } ) => {{
+        let mut b = $crate::JSONBuilder::new();
+        $( b.add_pair($key, $val); )*
+        b.build()
+    }};
+
+    // Array: [ v, v, v ] — each element is .into()'d so mixed types collapse to Vec<Value>
+    ( [ $($val:expr),* $(,)? ] ) => {{
+        $crate::Value::Array(vec![ $( ($val).into() ),* ])
+    }};
+
+    // Bare scalar: 42, "hi", true, my_string_var, ...
+    ( $val:expr ) => {
+        ::std::convert::Into::<$crate::Value>::into($val)
+    };
+}
+
 /// A JSON number, distinguishing unsigned integers, signed integers, and floats.
 ///
 /// You usually don't construct this directly — it's produced by [`to_value`]
