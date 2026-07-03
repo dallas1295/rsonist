@@ -36,8 +36,9 @@ impl JSONBuilder {
     /// Inserts a key/value pair. Any type that implements [`Into<Value>`]
     /// (the integer/float/bool/String/Vec/BTreeMap types) can be passed
     /// directly as the value.
-    pub fn add_pair(&mut self, key: &str, value: impl Into<Value>) {
+    pub fn add_pair(&mut self, key: &str, value: impl Into<Value>) -> &mut Self {
         self.entries.insert(key.to_string(), value.into());
+        self
     }
 
     /// Inserts a nested object under the given key.
@@ -57,13 +58,14 @@ impl JSONBuilder {
     /// let value = builder.build();
     /// assert_eq!(value.get("meta").unwrap().get("age").unwrap().as_i64().unwrap(), 30);
     /// ```
-    pub fn add_object<F>(&mut self, key: &str, f: F)
+    pub fn add_object<F>(&mut self, key: &str, f: F) -> &mut Self
     where
         F: FnOnce(&mut JSONBuilder),
     {
         let mut child = JSONBuilder::new();
         f(&mut child);
         self.entries.insert(key.to_string(), child.build());
+        self
     }
 
     /// Consumes the builder and returns the assembled object as a [`Value`].
