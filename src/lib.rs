@@ -34,7 +34,7 @@
 //!
 //! let mut builder = JSONBuilder::new();
 //! builder.add_pair("name", "alice".to_string());
-//! let json = builder.build().to_str();
+//! let json = builder.build_val().to_str();
 //! assert_eq!(json, r#"{"name": "alice"}"#);
 //! ```
 

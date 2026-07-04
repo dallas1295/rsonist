@@ -395,7 +395,7 @@ impl Value {
     /// let mut builder = JSONBuilder::new();
     /// builder.add_pair("name", "alice".to_string());
     /// builder.add_pair("scores", vec![10, 20, 30]);
-    /// let pretty = builder.build().prettify();
+    /// let pretty = builder.build_val().prettify();
     /// ```
     ///
     /// Non-finite floats (infinity, NaN) are emitted as `null`, matching
