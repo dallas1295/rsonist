@@ -19,7 +19,7 @@ macro_rules! rson {
     ( { $($key:tt : $val:expr),* $(,)? } ) => {{
         let mut b = $crate::JSONBuilder::new();
         $( b.add_pair($key, $val); )*
-        b.build()
+        b.build_val()
     }};
 
     // Array: [ v, v, v ] — each element is .into()'d so mixed types collapse to Vec<Value>
@@ -470,5 +470,11 @@ impl Value {
                 }
             },
         }
+    }
+}
+
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.to_str())
     }
 }
