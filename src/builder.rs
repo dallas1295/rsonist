@@ -69,8 +69,8 @@ impl JSONBuilder {
     }
 
     /// Consumes the builder and returns the assembled object as a [`Value`].
-    pub fn build(self) -> Value {
-        Value::Object(self.entries)
+    pub fn build(&mut self) -> Value {
+        Value::Object(std::mem::take(&mut self.entries))
     }
 }
 
