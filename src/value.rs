@@ -106,8 +106,7 @@ pub enum Value {
     Number(JsonNumber),
     /// A JSON string.
     Str(String),
-    /// A JSON array. Elements are themselves [`Value`]s.
-    Array(Vec<Value>),
+    /// A JSON array. Elements are themselves [`Value`]s. Array(Vec<Value>),
     /// A JSON object. Keys are strings, values are [`Value`]s.
     ///
     /// Backed by a [`BTreeMap`], so keys serialize in sorted order (deterministic

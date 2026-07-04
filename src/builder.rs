@@ -64,12 +64,12 @@ impl JSONBuilder {
     {
         let mut child = JSONBuilder::new();
         f(&mut child);
-        self.entries.insert(key.to_string(), child.build());
+        self.entries.insert(key.to_string(), child.to_value());
         self
     }
 
     /// Consumes the builder and returns the assembled object as a [`Value`].
-    pub fn build(&mut self) -> Value {
+    pub fn to_value(&mut self) -> Value {
         Value::Object(std::mem::take(&mut self.entries))
     }
 }
