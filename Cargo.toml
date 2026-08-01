@@ -5,7 +5,7 @@ edition = "2024"
 description = "A small, zero-dep JSON library"
 license = "GPL3.0"
 authors = ["Dallas S. <adsherman@tutamail.com>"]
-repository = "https://codeberg.org/dallas1295/rsonist"
+repository = "https://github.com/dallas1295/rsonist"
 categories = ["parser-implementations", "encoding", "json"]
 
 [dependencies]
