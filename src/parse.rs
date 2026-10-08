@@ -1,5 +1,5 @@
 use crate::{JsonNumber, Value};
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::fmt;
 
 /// An error produced while parsing JSON.
@@ -243,10 +243,10 @@ impl<'a> Scanner<'a> {
 
         if matches!(self.peek(), Some(b'}')) {
             self.next();
-            return Ok(Value::Object(BTreeMap::new()));
+            return Ok(Value::Object(HashMap::new()));
         }
 
-        let mut obj = BTreeMap::new();
+        let mut obj = HashMap::new();
 
         loop {
             self.skip_whitespace();
