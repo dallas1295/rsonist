@@ -54,9 +54,9 @@ impl JSONBuilder {
     /// builder.add_object("meta", |c| {
     ///     c.add_pair("age", 30);
     ///     c.add_pair("active", true);
-/// });
-/// let value = builder.build_val();
-/// assert_eq!(value.get("meta").unwrap().get("age").unwrap().as_i64().unwrap(), 30);
+    /// });
+    /// let value = builder.build_val();
+    /// assert_eq!(value.get("meta").unwrap().get("age").unwrap().as_i64().unwrap(), 30);
     /// ```
     pub fn add_object<F>(&mut self, key: &str, f: F) -> &mut Self
     where
