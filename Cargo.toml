@@ -6,7 +6,7 @@ description = "A small, zero-dep JSON library"
 license = "GPL-3.0"
 authors = ["Dallas S. <adsherman@tutamail.com>"]
 repository = "https://github.com/dallas1295/rsonist"
-categories = ["parser-implementations", "encoding", "json", "personal-project"]
+categories = ["parser-implementations", "encoding"]
 
 [dependencies]
 
