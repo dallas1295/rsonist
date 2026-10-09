@@ -42,6 +42,7 @@ macro_rules! rson {
 /// matching on this enum directly.
 ///
 /// [`to_value`]: crate::to_value
+#[derive(Clone, Debug)]
 pub enum JsonNumber {
     /// A non-negative integer parsed from JSON (e.g. `42`).
     UInt(u64),
@@ -86,6 +87,18 @@ impl From<&str> for Value {
     }
 }
 
+impl From<usize> for Value {
+    fn from(n: usize) -> Self {
+        Value::Number(JsonNumber::UInt(n as u64))
+    }
+}
+
+impl From<JsonNumber> for Value {
+    fn from(n: JsonNumber) -> Self {
+        Value::Number(n)
+    }
+}
+
 /// Any JSON value.
 ///
 /// This is the central type of rsonist: every JSON document parses into a
@@ -97,6 +110,7 @@ impl From<&str> for Value {
 /// method. Construct one with [`JSONBuilder`], the `From` impls, or by hand.
 ///
 /// [`JSONBuilder`]: crate::JSONBuilder
+#[derive(Clone, Debug)]
 pub enum Value {
     /// JSON `null`.
     Null,
@@ -235,7 +249,7 @@ impl Value {
             Value::Array(i) => {
                 // this turns the Array into an iter and then recursively serializes remaining children
                 let arr: Vec<String> = i.iter().map(|i| i.to_str()).collect();
-                format!("[{}]", arr.join(" , "))
+                format!("[{}]", arr.join(", "))
             }
             Value::Object(m) => {
                 // this turns the BTreeMap into an iter and then recursively serializes remaining children
@@ -471,10 +485,91 @@ impl Value {
             },
         }
     }
+
+    /// Checks if the value equals another value, accounting for type differences
+    ///
+    ///
+    /// This is for:
+    /// - Type checing (can't compare `String` to `i64`)
+    /// - Recursive comparisons of nested strucutres
+    /// - Number type conversion (e.g., `Int(5)` == `UInt(5)` == `Float(5.0)`)
+    ///
+    /// # Example
+    /// ```
+    /// use rsonist::{to_value, Value, JsonNumber};
+    ///
+    /// let val1 = to_value(r#"5"#).unwrap();
+    /// let val2 = to_value(r#"-5"#).unwrap();
+    /// assert!(val1.eq(&val2));
+    /// ```
+    fn eq(&self, other: &Value) -> bool {
+        match (self, other) {
+            // Null
+            (Value::Null, Value::Null) => true,
+            // Bool
+            (Value::Bool(a), Value::Bool(b)) => a == b,
+
+            // Numbers of all types
+            (Value::Number(a), Value::Number(b)) => {
+                match (a, b) {
+                    (JsonNumber::Int(i1), JsonNumber::Int(i2)) => i1 == i2,
+                    (JsonNumber::UInt(u1), JsonNumber::UInt(u2)) => u1 == u2,
+                    (JsonNumber::Float(f1), JsonNumber::Float(f2)) => f1 == f2,
+                    (JsonNumber::Int(i), JsonNumber::UInt(u)) => *i == *u as i64,
+                    (JsonNumber::UInt(u), JsonNumber::Int(i)) => *u == *i as u64,
+                    // Int to Float
+                    (JsonNumber::Int(i), JsonNumber::Float(f)) => *i as f64 == *f,
+                    // Float to Int
+                    (JsonNumber::Float(f), JsonNumber::Int(i)) => *f == *i as f64,
+                    // UInt to Float
+                    (JsonNumber::UInt(u), JsonNumber::Float(f)) => *u as f64 == *f,
+                    // Float to UInt
+                    (JsonNumber::Float(f), JsonNumber::UInt(u)) => *f == *u as f64,
+                }
+            }
+            // Strings
+            (Value::Str(a), Value::Str(b)) => a == b,
+
+            // Arrays
+            (Value::Array(a), Value::Array(b)) => {
+                a.len() == b.len() && a.iter().zip(b.iter()).all(|(av, bv)| av.eq(bv))
+            }
+
+            // Objects - compare key-value pairs
+            (Value::Object(a), Value::Object(b)) => {
+                a.len() == b.len()
+                    && a.iter()
+                        .all(|(k, av)| b.get(k).map(|bv| av.eq(bv)).unwrap_or(false))
+            }
+
+            // Different types
+            _ => false,
+        }
+    }
 }
 
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.to_str())
     }
+}
+
+pub fn obj_from_pair<V: Into<Value>>(vals: &[Value], key: &str, value: V) -> Vec<Value> {
+    let search_val = value.into();
+    let query: Vec<Value> = vals
+        .iter()
+        .filter(|v| {
+            if let Value::Object(obj) = v {
+                if let Some(found) = obj.get(key) {
+                    found.eq(&search_val)
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        })
+        .cloned()
+        .collect();
+    return query;
 }
