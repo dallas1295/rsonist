@@ -370,9 +370,6 @@ impl Value {
         }
     }
 
-    /// Returns the object that contains the given key, value pair else `None`.
-    pub fn as_obj_from_pair(&self) ->  {}
-
     /// Returns the array slice if this is a [`Value::Array`], else `None`.
     ///
     /// Borrows the inner elements as a slice — iterate directly without
