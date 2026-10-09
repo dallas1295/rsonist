@@ -1,5 +1,5 @@
 use crate::{JsonNumber, Value};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt;
 
 /// An error produced while parsing JSON.
@@ -243,10 +243,10 @@ impl<'a> Scanner<'a> {
 
         if matches!(self.peek(), Some(b'}')) {
             self.next();
-            return Ok(Value::Object(HashMap::new()));
+            return Ok(Value::Object(BTreeMap::new()));
         }
 
-        let mut obj = HashMap::new();
+        let mut obj = BTreeMap::new();
 
         loop {
             self.skip_whitespace();
@@ -327,4 +327,49 @@ pub fn to_value(json: &str) -> Result<Value, ScanError> {
         Some(_) => Err(ScanError::TrailingData { p: scanner.p }),
         None => Ok(object),
     }
+}
+
+/// Parses a JSON document into a vector of [`Value`]s.
+///
+/// Unlike [`to_value`], this function accepts multiple top-level values
+/// (e.g., `{ } { }` or `1 2 3`) and returns a `Vec<Value>` containing each
+/// parsed value. Returns [`ScanError`] if the input is malformed.
+///
+/// # Example
+///
+/// ```
+/// use rsonist::to_values;
+///
+/// let json = r#"{ "a": 1 } { "b": 2 }"#;
+/// let values = to_values(json)?;
+/// assert_eq!(values.len(), 2);
+/// assert_eq!(values[0].get("a").unwrap().as_i64().unwrap(), 1);
+/// assert_eq!(values[1].get("b").unwrap().as_i64().unwrap(), 2);
+/// # Ok::<(), rsonist::ScanError>(())
+/// ```
+pub fn to_values(json: &str) -> Result<Vec<Value>, ScanError> {
+    let mut values = Vec::new();
+    let mut scanner = Scanner::new(json);
+
+    while let Ok(value) = scanner.parse_value() {
+        values.push(value);
+        scanner.skip_whitespace();
+
+        if scanner.peek().is_none() {
+            break;
+        }
+
+        if matches!(
+            scanner.peek(),
+            Some(b'{' | b'[' | b'"' | b't' | b'f' | b'n' | b'0'..=b'9' | b'-')
+        ) {
+            continue;
+        } else {
+            return Err(ScanError::UnexpectedChar {
+                c: scanner.peek().unwrap() as char,
+                p: scanner.p,
+            });
+        }
+    }
+    Ok(values)
 }

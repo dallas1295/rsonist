@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::value::Value;
 
@@ -22,19 +22,19 @@ use crate::value::Value;
 /// assert_eq!(value.get("age").unwrap().as_i64().unwrap(), 30);
 /// ```
 pub struct JSONBuilder {
-    entries: HashMap<String, Value>,
+    entries: BTreeMap<String, Value>,
 }
 
 impl JSONBuilder {
     /// Creates an empty builder.
     pub fn new() -> Self {
         JSONBuilder {
-            entries: HashMap::new(),
+            entries: BTreeMap::new(),
         }
     }
 
     /// Inserts a key/value pair. Any type that implements [`Into<Value>`]
-    /// (the integer/float/bool/String/Vec/HashMap types) can be passed
+    /// (the integer/float/bool/String/Vec/BTreeMap types) can be passed
     /// directly as the value.
     pub fn add_pair(&mut self, key: &str, value: impl Into<Value>) -> &mut Self {
         self.entries.insert(key.to_string(), value.into());

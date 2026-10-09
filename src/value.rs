@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Build a `Value` using JSON-like literal syntax.
 ///
@@ -110,9 +110,9 @@ pub enum Value {
     Array(Vec<Value>),
     /// A JSON object. Keys are strings, values are [`Value`]s.
     ///
-    /// Backed by a [`HashMap`], so keys serialize in sorted order (deterministic
+    /// Backed by a [`BTreeMap`], so keys serialize in sorted order (deterministic
     /// output) rather than insertion order.
-    Object(HashMap<String, Value>),
+    Object(BTreeMap<String, Value>),
 }
 
 impl From<bool> for Value {
@@ -187,8 +187,8 @@ impl<T: Into<Value>> From<Vec<T>> for Value {
     }
 }
 
-impl<T: Into<Value>> From<HashMap<String, T>> for Value {
-    fn from(map: HashMap<String, T>) -> Self {
+impl<T: Into<Value>> From<BTreeMap<String, T>> for Value {
+    fn from(map: BTreeMap<String, T>) -> Self {
         Value::Object(map.into_iter().map(|(k, v)| (k, v.into())).collect())
     }
 }
@@ -238,7 +238,7 @@ impl Value {
                 format!("[{}]", arr.join(" , "))
             }
             Value::Object(m) => {
-                // this turns the HashMap into an iter and then recursively serializes remaining children
+                // this turns the BTreeMap into an iter and then recursively serializes remaining children
                 let obj: Vec<String> = m
                     .iter()
                     .map(|(k, v)| format!("\"{}\": {}", k, v.to_str()))
@@ -351,7 +351,7 @@ impl Value {
 
     /// Returns the object map if this is a [`Value::Object`], else `None`.
     ///
-    /// Borrows the inner [`HashMap`] — iterate entries directly without
+    /// Borrows the inner [`BTreeMap`] — iterate entries directly without
     /// allocating. Chain with [`get`](Value::get) to drill in:
     ///
     /// ```
@@ -363,12 +363,15 @@ impl Value {
     ///     }
     /// }
     /// ```
-    pub fn as_obj(&self) -> Option<&HashMap<String, Value>> {
+    pub fn as_obj(&self) -> Option<&BTreeMap<String, Value>> {
         match self {
             Value::Object(m) => Some(m),
             _ => None,
         }
     }
+
+    /// Returns the object that contains the given key, value pair else `None`.
+    pub fn as_obj_from_pair(&self) ->  {}
 
     /// Returns the array slice if this is a [`Value::Array`], else `None`.
     ///
