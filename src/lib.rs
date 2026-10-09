@@ -44,4 +44,4 @@ mod value;
 
 pub use builder::JSONBuilder;
 pub use parse::{ScanError, to_value, to_values};
-pub use value::{JsonNumber, Value};
+pub use value::{JsonNumber, Value, obj_from_pair};
