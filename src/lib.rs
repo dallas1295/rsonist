@@ -33,9 +33,9 @@
 //! use rsonist::JSONBuilder;
 //!
 //! let mut builder = JSONBuilder::new();
-//! builder.add_pair("name", "alice".to_string());
+//! builder.add_pair("name", "alice");
 //! let json = builder.build_val().to_str();
-//! assert_eq!(json, r#"{"name": "alice"}"#);
+//! assert_eq!(json, "{"name": "alice"}");
 //! ```
 
 mod builder;

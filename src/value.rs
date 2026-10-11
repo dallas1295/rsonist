@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 #[macro_export]
 macro_rules! rson {
     // Object: { "k": v, "k2": v2 }
-    ( { $($key:tt : $val:expr),* $(,)? } ) => {{
+    ( $($key:tt : $val:expr),* $(,)?  ) => {{
         let mut b = $crate::JSONBuilder::new();
         $( b.add_pair($key, $val); )*
         b.build_val()
@@ -219,7 +219,7 @@ impl Value {
             Value::Null => "null".to_string(),
             Value::Bool(b) => b.to_string(),
             Value::Str(s) => {
-                let mut out = String::from("\"");
+                let mut out = String::new();
                 for c in s.chars() {
                     match c {
                         '"' => out.push_str("\\\""),
@@ -232,7 +232,6 @@ impl Value {
                         c => out.push(c),
                     }
                 }
-                out.push('"');
                 out
             }
             Value::Number(n) => match n {
