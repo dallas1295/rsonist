@@ -232,7 +232,8 @@ impl Value {
                         c => out.push(c),
                     }
                 }
-                out
+                format!("\"{}\"", out)
+                // out
             }
             Value::Number(n) => match n {
                 JsonNumber::UInt(u) => u.to_string(),
@@ -467,9 +468,7 @@ impl Value {
             Value::Bool(b) => out.push_str(&b.to_string()),
             Value::Null => out.push_str("null"),
             Value::Str(s) => {
-                out.push('"');
                 out.push_str(s);
-                out.push('"');
             }
             Value::Number(n) => match n {
                 JsonNumber::UInt(u) => out.push_str(&u.to_string()),
