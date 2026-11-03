@@ -1,38 +1,5 @@
 use std::collections::BTreeMap;
 
-/// Build a `Value` using JSON-like literal syntax.
-///
-/// ```
-/// use rsonist::rson;
-///
-/// let v = rson!({
-///     "name": "alice",
-///     "age": 30,
-///     "active": true,
-///     "scores": rson!([10, 20, 30]),
-///     "meta": rson!({ "role": "admin" }),
-/// });
-/// ```
-#[macro_export]
-macro_rules! rson {
-    // Object: { "k": v, "k2": v2 }
-    ( $($key:tt : $val:expr),* $(,)?  ) => {{
-        let mut b = $crate::JSONBuilder::new();
-        $( b.add_pair($key, $val); )*
-        b.build_val()
-    }};
-
-    // Array: [ v, v, v ] — each element is .into()'d so mixed types collapse to Vec<Value>
-    ( [ $($val:expr),* $(,)? ] ) => {{
-        $crate::Value::Array(vec![ $( ($val).into() ),* ])
-    }};
-
-    // Bare scalar: 42, "hi", true, my_string_var, ...
-    ( $val:expr ) => {
-        ::std::convert::Into::<$crate::Value>::into($val)
-    };
-}
-
 /// A JSON number, distinguishing unsigned integers, signed integers, and floats.
 ///
 /// You usually don't construct this directly — it's produced by [`to_value`]
@@ -491,6 +458,7 @@ impl Value {
     /// - Type checing (can't compare `String` to `i64`)
     /// - Recursive comparisons of nested strucutres
     /// - Number type conversion (e.g., `Int(5)` == `UInt(5)` == `Float(5.0)`)
+    /// - Negative integers will remain unequal
     ///
     /// # Example
     /// ```
@@ -498,9 +466,9 @@ impl Value {
     ///
     /// let val1 = to_value(r#"5"#).unwrap();
     /// let val2 = to_value(r#"-5"#).unwrap();
-    /// assert!(val1.eq(&val2));
+    /// assert!(!val1.eq(&val2));
     /// ```
-    fn eq(&self, other: &Value) -> bool {
+    pub fn eq(&self, other: &Value) -> bool {
         match (self, other) {
             // Null
             (Value::Null, Value::Null) => true,

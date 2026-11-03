@@ -35,7 +35,7 @@
 //! let mut builder = JSONBuilder::new();
 //! builder.add_pair("name", "alice");
 //! let json = builder.build_val().to_str();
-//! assert_eq!(json, "{"name": "alice"}");
+//! assert_eq!(json, "{\"name\": \"alice\"}");
 //! ```
 
 mod builder;
@@ -43,5 +43,5 @@ mod parse;
 mod value;
 
 pub use builder::JSONBuilder;
-pub use parse::{ScanError, to_value, to_values};
-pub use value::{JsonNumber, Value, obj_from_pair};
+pub use parse::{to_value, to_values, ScanError};
+pub use value::{obj_from_pair, JsonNumber, Value};
