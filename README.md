@@ -24,7 +24,7 @@ Add it to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rsonist = "0.1.5"
+rsonist = "0.2.0"
 ```
 
 ## Quick start
