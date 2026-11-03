@@ -73,19 +73,6 @@ let json = builder.build_val().to_str();
 // {"age": 30, "meta": {"active": true}, "name": "alice"}
 ```
 
-Or with the `rson!` macro, using JSON-like literal syntax:
-
-```rust
-use rsonist::rson;
-
-let v = rson!({
-    "name": "alice",
-    "age": 30,
-    "active": true,
-    "scores": rson!([10, 20, 30]),
-});
-```
-
 Common Rust types implement `Into<Value>`, so integers, floats, booleans,
 `String`/`&str`, `Vec<T>`, and `BTreeMap<String, T>` all convert directly.
 
